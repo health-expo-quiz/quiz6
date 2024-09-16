@@ -174,29 +174,16 @@
         </div>
 
         <div class="leaderboard" id="leaderboardContainer">
-            <div class="top-podium" id="topPodium">
-                <h2>Top Performer</h2>
-                <p id="topName"></p>
-                <p id="topTime"></p>
-                <p id="topScore"></p>
-                <p id="topYearGroup"></p>
-            </div>
-            <div class="user-info" id="userInfo">
-                <h3>Your Results</h3>
-                <p id="userName"></p>
-                <p id="userTime"></p>
-                <p id="userScore"></p>
-                <p id="userYearGroup"></p>
-            </div>
+            <div class="top-podium" id="topPodium"></div>
+            <div class="user-info" id="topUserInfo"></div>
         </div>
     </div>
 
     <script type="module">
-        // Import the functions you need from the SDKs you need
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+        // Firebase Configuration
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-        // Your web app's Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCW8I1Cr-4WGfbqaBWtz5A3ajAOZUqjJTc",
             authDomain: "health-expo-quiz-test.firebaseapp.com",
@@ -211,15 +198,8 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // Quiz Data
         const questions = [
-            { question: "What is a common sign of anxiety?", answers: ["Rapid heartbeat", "Laughter", "Sleepiness", "Excessive energy"], correct: 0 },
-            { question: "What does BPD stand for?", answers: ["Borderline Personality Disorder", "Bipolar Disorder", "Burnout Prevention Disease", "Brain Processing Disorder"], correct: 0 },
-            { question: "Which is a healthy way to deal with stress?", answers: ["Exercise", "Avoiding it", "Binge eating", "Procrastination"], correct: 0 },
-            { question: "What is an effective way to manage anger?", answers: ["Exercise", "Ignoring it", "Shouting", "Complaining"], correct: 0 },
-            { question: "Which method helps with sleep issues?", answers: ["Meditation", "Caffeine", "Watching TV", "Stress"], correct: 0 },
-            { question: "What is a key symptom of depression?", answers: ["Persistent sadness", "Excessive happiness", "Energy", "Excitement"], correct: 0 },
-            { question: "What can improve mental health?", answers: ["Healthy relationships", "Isolating yourself", "Overworking", "Ignoring problems"], correct: 0 },
-            { question: "Which practice helps build resilience?", answers: ["Mindfulness", "Avoiding challenges", "Ignoring feelings", "Over-scheduling"], correct: 0 },
             { question: "What is an effective coping strategy for stress?", answers: ["Deep breathing", "Ignoring stress", "Overworking", "Disregarding feelings"], correct: 0 },
             { question: "What is a common treatment for anxiety?", answers: ["Therapy", "Avoiding social interaction", "Ignoring symptoms", "Overeating"], correct: 0 }
         ];
@@ -272,47 +252,49 @@
             }, 1000);
         };
 
-        const endQuiz = async () => {
+        const endQuiz = () => {
             clearInterval(timer);
             document.getElementById('quizContainer').style.display = 'none';
             document.getElementById('resultContainer').style.display = 'block';
             document.getElementById('score').innerText = score;
-            await saveScore();
-            showLeaderboard();
         };
 
-        const saveScore = async () => {
+        // Leaderboard Submission
+        document.getElementById('leaderboardForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
             const name = document.getElementById('name').value;
             const yearGroup = document.getElementById('yearGroup').value;
-            try {
-                await addDoc(collection(db, "scores"), {
-                    name: name,
-                    score: score,
-                    timestamp: new Date(),
-                    yearGroup: yearGroup
-                });
-            } catch (e) {
-                console.error("Error adding document: ", e);
-            }
-        };
 
-        const showLeaderboard = async () => {
-            const querySnapshot = await getDocs(query(collection(db, "scores"), orderBy("score", "desc")));
-            const topUser = querySnapshot.docs[0]?.data() || {};
-            document.getElementById('topName').innerText = `Name: ${topUser.name || 'N/A'}`;
-            document.getElementById('topScore').innerText = `Score: ${topUser.score || 'N/A'}`;
-            document.getElementById('topTime').innerText = `Time: ${topUser.timestamp ? topUser.timestamp.toDate().toLocaleString() : 'N/A'}`;
-            document.getElementById('topYearGroup').innerText = `Year Group: ${topUser.yearGroup || 'N/A'}`;
-            document.getElementById('leaderboardContainer').style.opacity = 1;
+            try {
+                await addDoc(collection(db, 'leaderboard'), {
+                    name,
+                    yearGroup,
+                    score,
+                    time: new Date().toISOString()
+                });
+                displayLeaderboard();
+            } catch (error) {
+                console.error("Error adding document: ", error);
+            }
+        });
+
+        const displayLeaderboard = async () => {
+            document.getElementById('resultContainer').style.display = 'none';
+            document.getElementById('leaderboardContainer').style.display = 'block';
+            const q = query(collection(db, 'leaderboard'), orderBy('score', 'desc'));
+            const querySnapshot = await getDocs(q);
+
+            const topUsers = [];
+            querySnapshot.forEach(doc => {
+                topUsers.push(doc.data());
+            });
+
+            const topUser = topUsers[0];
+            document.getElementById('topPodium').innerText = `Top Scorer: ${topUser.name}`;
+            document.getElementById('topUserInfo').innerHTML = `<h3>Year Group: ${topUser.yearGroup}</h3><p>Score: ${topUser.score}</p>`;
         };
 
         document.getElementById('startQuizBtn').addEventListener('click', startQuiz);
-
-        document.getElementById('leaderboardForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await saveScore();
-            showLeaderboard();
-        });
     </script>
 </body>
 </html>
